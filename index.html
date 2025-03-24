@@ -22,7 +22,7 @@
         }
         .copy-tooltip {
             position: absolute;
-            top: -28px;
+            bottom: -28px;
             right: 0;
             padding: 4px 8px;
             background-color: #333;
@@ -44,7 +44,7 @@
             <h1 class="font-medium text-lg">Python to JSON Converter</h1>
             <div class="flex items-center space-x-2">
                 <button id="copyBtn" class="toolbar-btn copy-btn relative flex items-center space-x-1 px-3 py-1.5 rounded text-sm bg-gray-700 hover:bg-gray-600">
-                    <span class="copy-tooltip">Ctrl+Shift+C</span>
+                    <span class="copy-tooltip">⌘ + J</span>
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path>
                     </svg>
@@ -106,14 +106,15 @@ Example: {'name': 'John', 'age': 30, 'is_active': True}"></textarea>
 
             // Copy JSON to clipboard
             function copyJsonToClipboard() {
-                const jsonText = jsonOutput.textContent;
+              const jsonText = jsonOutput.textContent;
+	      console.log(jsonText)
                 if (!jsonText) return;
 
                 navigator.clipboard.writeText(jsonText).then(() => {
                     // Show feedback
                     const originalText = copyBtn.querySelector('span:last-child').textContent;
-                    copyBtn.querySelector('span:last-child').textContent = 'Copied!';
-                    setTimeout(() => {
+                  copyBtn.querySelector('span:last-child').textContent = 'Copied!';
+		  setTimeout(() => {
                         copyBtn.querySelector('span:last-child').textContent = originalText;
                     }, 1500);
                 });
@@ -123,13 +124,16 @@ Example: {'name': 'John', 'age': 30, 'is_active': True}"></textarea>
             pythonInput.addEventListener('input', processPythonToJson);
             copyBtn.addEventListener('click', copyJsonToClipboard);
 
-            // Keyboard shortcut (Ctrl+Shift+C)
-            document.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.shiftKey && e.key === 'C') {
-                    e.preventDefault();
-                    copyJsonToClipboard();
-                }
-            });
+ const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+
+    // Update keyboard shortcut handler
+    document.addEventListener('keydown', (e) => {
+        if ((isMac && e.metaKey || !isMac && e.ctrlKey) && e.key === 'j') {
+            e.preventDefault();
+            copyJsonToClipboard();
+        }
+    });
+
 
             // Init with placeholder text processing
             processPythonToJson();
