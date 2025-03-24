@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Python to JSON Converter</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-
     <style>
         .app-container {
             height: calc(100vh - 60px);
@@ -94,39 +93,8 @@ Example: {'name': 'John', 'age': 30, 'is_active': True}"></textarea>
                 }
 
                 try {
-                    // Handle multiple JSON-like blocks
-                    let processedInput = pythonStr;
-
-                    // Replace Python-specific syntax with JSON syntax
-                    processedInput = processedInput
-                        .replace(/None/g, 'null')
-                        .replace(/True/g, 'true')
-                        .replace(/False/g, 'false')
-                        .replace(/'/g, '"')
-                        .replace(/(\w+):/g, '"$1":'); // Convert keys to have double quotes
-
-                    // Try to handle multiple objects by finding and combining them
-                    let combinedObject = {};
-                    let matches = processedInput.match(/\{[^{]*?\}/g);
-
-                    if (matches && matches.length > 1) {
-                        // Multiple objects found, combine them
-                        matches.forEach(match => {
-                            try {
-                                const obj = JSON.parse(match);
-                                combinedObject = { ...combinedObject, ...obj };
-                            } catch (e) {
-                                console.error('Error parsing object fragment:', e);
-                            }
-                        });
-                        processedInput = JSON.stringify(combinedObject);
-                    }
-
-                    // Parse and stringify to verify and format JSON
-                    const jsonObj = JSON.parse(processedInput);
-                    const formattedJson = JSON.stringify(jsonObj, null, 2);
-
-                    jsonOutput.textContent = formattedJson;
+                    const processedJson = convertPythonToJson(pythonStr);
+                    jsonOutput.textContent = processedJson;
                     statusMessage.textContent = '✓ Valid JSON';
                     statusMessage.className = 'text-xs text-green-600';
                 } catch (error) {
@@ -166,6 +134,78 @@ Example: {'name': 'John', 'age': 30, 'is_active': True}"></textarea>
             // Init with placeholder text processing
             processPythonToJson();
         });
+
+        /**
+         * Converts Python object strings to valid JSON
+         * @param {string} pythonStr - String containing Python object representation(s)
+         * @returns {string} - Formatted JSON string
+         */
+        function convertPythonToJson(pythonStr) {
+            // Replace Python-specific syntax with JSON syntax for the entire input
+            let processedInput = pythonStr
+                .replace(/None/g, 'null')
+                .replace(/True/g, 'true')
+                .replace(/False/g, 'false');
+
+            // Extract potential object definitions
+            // This regex looks for patterns that appear to be Python dictionaries or JSON objects
+            const objRegex = /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g;
+            const matches = processedInput.match(objRegex);
+
+            if (!matches || matches.length === 0) {
+                throw new Error('No valid Python objects found');
+            }
+
+            // Process each object separately and then merge them
+            const mergedObj = {};
+
+            for (const match of matches) {
+                // Process this individual object
+                let objStr = match
+                    // Replace single quotes with double quotes for JSON compatibility
+                    .replace(/'/g, '"')
+                    // Handle keys without quotes
+                    .replace(/(\w+):/g, '"$1":');
+
+                try {
+                    // Parse the processed object
+                    const obj = JSON.parse(objStr);
+
+                    // Deep merge with our result object
+                    deepMerge(mergedObj, obj);
+                } catch (e) {
+                    console.warn('Error parsing object fragment, skipping:', e);
+                    // Continue with other objects instead of failing completely
+                }
+            }
+
+            // Format the final JSON
+            return JSON.stringify(mergedObj, null, 2);
+        }
+
+        /**
+         * Deep merges objects and their nested properties
+         * @param {Object} target - Target object to merge into
+         * @param {Object} source - Source object to merge from
+         * @returns {Object} - The modified target object
+         */
+        function deepMerge(target, source) {
+            for (const key in source) {
+                if (source.hasOwnProperty(key)) {
+                    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+                        // If property is an object (but not an array), recursively merge
+                        if (!target[key] || typeof target[key] !== 'object') {
+                            target[key] = {};
+                        }
+                        deepMerge(target[key], source[key]);
+                    } else {
+                        // For primitives and arrays, just copy the value
+                        target[key] = source[key];
+                    }
+                }
+            }
+            return target;
+        }
     </script>
 </body>
 </html>
