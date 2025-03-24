@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python to JSON Converter</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <style>
+        .app-container {
+            height: calc(100vh - 60px);
+        }
+        .editor {
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            resize: none;
+            line-height: 1.5;
+        }
+        .toolbar-btn {
+            transition: all 0.2s;
+        }
+        .toolbar-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .copy-tooltip {
+            position: absolute;
+            top: -28px;
+            right: 0;
+            padding: 4px 8px;
+            background-color: #333;
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .copy-btn:hover .copy-tooltip {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-white">
+    <div class="flex flex-col h-screen">
+        <!-- Header Menu -->
+        <header class="bg-gray-800 text-white h-14 flex items-center justify-between px-4 shadow-md">
+            <h1 class="font-medium text-lg">Python to JSON Converter</h1>
+            <div class="flex items-center space-x-2">
+                <button id="copyBtn" class="toolbar-btn copy-btn relative flex items-center space-x-1 px-3 py-1.5 rounded text-sm bg-gray-700 hover:bg-gray-600">
+                    <span class="copy-tooltip">Ctrl+Shift+C</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path>
+                    </svg>
+                    <span>Copy JSON</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex flex-1 overflow-hidden">
+            <!-- Left Column (Input) -->
+            <div class="w-3/5 border-r border-gray-200 flex flex-col">
+                <div class="p-4 border-b border-gray-200 bg-gray-50">
+                    <h2 class="text-sm font-medium text-gray-700">Python Object Input</h2>
+                    <p class="text-xs text-gray-500 mt-1">Paste Python objects from your debugger</p>
+                </div>
+                <textarea id="pythonInput" class="editor flex-1 p-4 bg-white text-gray-800 focus:outline-none" placeholder="Paste Python objects here...
+Example: {'name': 'John', 'age': 30, 'is_active': True}"></textarea>
+            </div>
+
+            <!-- Right Column (Output) -->
+            <div class="w-2/5 flex flex-col">
+                <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                    <h2 class="text-sm font-medium text-gray-700">Valid JSON Output</h2>
+                    <div id="statusMessage" class="text-xs"></div>
+                </div>
+                <pre id="jsonOutput" class="editor flex-1 p-4 bg-gray-50 text-gray-800 overflow-auto"></pre>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const pythonInput = document.getElementById('pythonInput');
+            const jsonOutput = document.getElementById('jsonOutput');
+            const copyBtn = document.getElementById('copyBtn');
+            const statusMessage = document.getElementById('statusMessage');
+
+            // Process Python to JSON conversion
+            function processPythonToJson() {
+                const pythonStr = pythonInput.value.trim();
+                if (!pythonStr) {
+                    jsonOutput.textContent = '';
+                    statusMessage.textContent = '';
+                    return;
+                }
+
+                try {
+                    // Handle multiple JSON-like blocks
+                    let processedInput = pythonStr;
+
+                    // Replace Python-specific syntax with JSON syntax
+                    processedInput = processedInput
+                        .replace(/None/g, 'null')
+                        .replace(/True/g, 'true')
+                        .replace(/False/g, 'false')
+                        .replace(/'/g, '"')
+                        .replace(/(\w+):/g, '"$1":'); // Convert keys to have double quotes
+
+                    // Try to handle multiple objects by finding and combining them
+                    let combinedObject = {};
+                    let matches = processedInput.match(/\{[^{]*?\}/g);
+
+                    if (matches && matches.length > 1) {
+                        // Multiple objects found, combine them
+                        matches.forEach(match => {
+                            try {
+                                const obj = JSON.parse(match);
+                                combinedObject = { ...combinedObject, ...obj };
+                            } catch (e) {
+                                console.error('Error parsing object fragment:', e);
+                            }
+                        });
+                        processedInput = JSON.stringify(combinedObject);
+                    }
+
+                    // Parse and stringify to verify and format JSON
+                    const jsonObj = JSON.parse(processedInput);
+                    const formattedJson = JSON.stringify(jsonObj, null, 2);
+
+                    jsonOutput.textContent = formattedJson;
+                    statusMessage.textContent = '✓ Valid JSON';
+                    statusMessage.className = 'text-xs text-green-600';
+                } catch (error) {
+                    jsonOutput.textContent = `// Error: ${error.message}\n// Check your input syntax`;
+                    statusMessage.textContent = '✗ Invalid JSON';
+                    statusMessage.className = 'text-xs text-red-600';
+                }
+            }
+
+            // Copy JSON to clipboard
+            function copyJsonToClipboard() {
+                const jsonText = jsonOutput.textContent;
+                if (!jsonText) return;
+
+                navigator.clipboard.writeText(jsonText).then(() => {
+                    // Show feedback
+                    const originalText = copyBtn.querySelector('span:last-child').textContent;
+                    copyBtn.querySelector('span:last-child').textContent = 'Copied!';
+                    setTimeout(() => {
+                        copyBtn.querySelector('span:last-child').textContent = originalText;
+                    }, 1500);
+                });
+            }
+
+            // Event listeners
+            pythonInput.addEventListener('input', processPythonToJson);
+            copyBtn.addEventListener('click', copyJsonToClipboard);
+
+            // Keyboard shortcut (Ctrl+Shift+C)
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+                    e.preventDefault();
+                    copyJsonToClipboard();
+                }
+            });
+
+            // Init with placeholder text processing
+            processPythonToJson();
+        });
+    </script>
+</body>
+</html>
