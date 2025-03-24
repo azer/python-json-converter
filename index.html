@@ -163,9 +163,10 @@ Example: {'name': 'John', 'age': 30, 'is_active': True}"></textarea>
                 // Process this individual object
                 let objStr = match
                     // Replace single quotes with double quotes for JSON compatibility
-                    .replace(/'/g, '"')
+                .replace(/'/g, '"')
+		.replace(/‘|’/g, '"')
                     // Handle keys without quotes
-                    .replace(/(\w+):/g, '"$1":');
+                    //.replace(/(\w+):/g, '"$1":');
 
                 try {
                     // Parse the processed object
